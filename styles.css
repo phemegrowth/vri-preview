@@ -521,7 +521,9 @@ body::after {
   position: absolute; left: 0; right: 0; bottom: 12vh; text-align: center; color: var(--paper);
   font-size: 12px; letter-spacing: .34em; text-transform: uppercase; opacity: .8;
 }
-@media (max-width: 700px) { .fly-mask text { font-size: 320px; letter-spacing: -6px; } .fly { height: 220vh; } }
+@media (max-width: 700px) { .fly-mask text { font-size: 320px; letter-spacing: -6px; } .fly { height: 200vh; } }
+/* phones: the film stays visible (dimmed) around the letters instead of a flat black screen */
+@media (max-width: 800px) { .fly-zoom rect { fill-opacity: .8; } }
 
 /* ---------- Selling now as a 3D ring (desktop) ---------- */
 @media (min-width: 801px) {
@@ -556,7 +558,7 @@ body::after {
   .ex-tag { right: auto; left: 10px; top: 8px; transform: none; padding: 4px 8px; background: rgba(20,20,19,.72); font-size: 9px; gap: 8px; }
   .ex-tag i { width: 16px; }
 }
-@media (max-width: 700px) { .explode { height: 220vh; } .ex-stage { width: 100%; } }
+@media (max-width: 700px) { .explode { height: 170vh; } .ex-stage { width: 100%; } }
 
 /* ---------- Project pages: the blueprint draws itself, then the render fills in ---------- */
 .pdraw { position: absolute; inset: 0; background: var(--ink); pointer-events: none; }
@@ -629,3 +631,6 @@ body::after {
   .life-grid figure:nth-child(2) { top: 0; }
 }
 @media (prefers-reduced-motion: reduce) { .scrub { height: auto; } .scrub-pin { position: relative; } }
+/* phones: the clip loops on one screen (app.js adds .scrub-loop), no long scroll */
+.scrub.scrub-loop { height: auto; }
+.scrub.scrub-loop .scrub-pin { position: relative; }

@@ -49,6 +49,25 @@
   }), { threshold: .25 });
   $$("video[data-autoplay]").forEach(v => vio.observe(v));
 
+  // Phones (13 Nov 2026): iPhone Safari paints a video black until it has a frame (slow data, Low Power Mode,
+  // or a seek it can't fetch yet). So the poster also sits behind every video, and on phones the scroll-played
+  // clips just loop while on screen instead of following the scrollbar.
+  const phone = matchMedia("(max-width: 800px), (hover: none) and (pointer: coarse)").matches;
+  $$("video[poster]").forEach(v => {
+    const box = v.parentElement;
+    if (!getComputedStyle(box).backgroundImage.includes("url")) {
+      box.style.backgroundImage = `url("${v.getAttribute("poster")}")`;
+      box.style.backgroundSize = "cover";
+      box.style.backgroundPosition = "center";
+    }
+  });
+  if (phone) $$("[data-scrub]").forEach(sec => {
+    const v = $("video", sec);
+    sec.classList.add("scrub-loop");
+    v.loop = true;
+    vio.observe(v);
+  });
+
   // ---------- 1. Film hero: captions + progress ticks follow the cuts; the frame drifts as you leave ----------
   const film = $("[data-film]");
   if (film) {
@@ -210,20 +229,35 @@
         try { const b = cut.getExtentOfChar(1); cx = b.x + b.width / 2; cy = b.y + b.height * .58; } catch (err) {}
         set(last);
       };
+      // Phones: the whole SVG scales as one GPU layer (no mask repaint per frame, which stuttered on iPhone),
+      // the scroll is smoothed, and the zoom stops at 18x and fades out before Safari can drop the mask.
+      const svg = $(".fly-mask", fly);
+      if (phone) svg.style.willChange = "transform, opacity";
       const set = p => {
         last = p;
         const t = range(p, .06, .82);
-        const sc = Math.pow(140, t * t);
+        const sc = phone ? Math.min(18, Math.pow(140, t * t)) : Math.pow(140, t * t);
+        ghost.style.opacity = 1 - range(p, .04, .2);
+        line.style.opacity = .8 - range(p, 0, .1) * .8;
+        if (phone) {
+          const W = svg.clientWidth, H = svg.clientHeight, k = Math.min(W / 1600, H / 900);
+          svg.style.transformOrigin = `${(W - 1600 * k) / 2 + cx * k}px ${(H - 900 * k) / 2 + cy * k}px`;
+          svg.style.transform = `scale(${sc})`;
+          svg.style.opacity = 1 - range(sc, 6, 14);
+          return;
+        }
         const tr = `translate(${cx} ${cy}) scale(${sc}) translate(${-cx} ${-cy})`;
         zoom.setAttribute("transform", tr);
         ghost.setAttribute("transform", tr);
-        ghost.style.opacity = 1 - range(p, .04, .2);
-        line.style.opacity = .8 - range(p, 0, .1) * .8;
         zoom.style.opacity = 1 - range(p, .78, .86);
       };
       document.fonts?.ready.then(measure);
       measure();
-      ScrollTrigger.create({ trigger: fly, start: "top top", end: "bottom bottom", onUpdate: self => set(self.progress) });
+      if (phone) {
+        const o = { p: 0 };
+        gsap.to(o, { p: 1, ease: "none", onUpdate: () => set(o.p),
+          scrollTrigger: { trigger: fly, start: "top top", end: "bottom bottom", scrub: .6 } });
+      } else ScrollTrigger.create({ trigger: fly, start: "top top", end: "bottom bottom", onUpdate: self => set(self.progress) });
     }
 
     // Selling now: the projects stand on a ring that turns as you scroll, snapping to each card (desktop)
@@ -284,6 +318,7 @@
 
     // AI clips played by the scroll (model to reality, day to night): the video follows the scrollbar
     $$("[data-scrub]").forEach(sec => {
+      if (phone) return;
       const v = $("video", sec), copy = $(".scrub-copy", sec);
       let target = 0, shown = -1;
       v.pause();
